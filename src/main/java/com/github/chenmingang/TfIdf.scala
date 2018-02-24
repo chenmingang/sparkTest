@@ -10,9 +10,9 @@ import org.apache.spark.{SparkConf, SparkContext}
 
 object TfIdf {
   def main(args: Array[String]): Unit = {
-//    trainWordScore
-        println(sim("java开发工程师", "ios开发工程师"))
-        println(sim("java开发工程师", "java"))
+    trainWordScore
+//        println(sim("java开发工程师", "ios开发工程师"))
+//        println(sim("java开发工程师", "java"))
 
   }
 
