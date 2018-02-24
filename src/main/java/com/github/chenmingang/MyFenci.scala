@@ -31,7 +31,7 @@ object MyFenci {
       val text = replaceSprical(line)
       var list: List[(String, Int)] = List()
       allSubStr(text, 1).split(",").filter(_.nonEmpty).foreach(w => {
-        list ::=(w, 1)
+        list ::= (w, 1)
       })
       list.toArray.toSeq
     }).reduceByKey(_ + _)
@@ -59,14 +59,14 @@ object MyFenci {
 
         val word = wordArray(index)
         if (wordArray.length == 1) {
-          list ::=(word, KeyWord(word, 1, Map(), Map()))
+          list ::= (word, KeyWord(word, 1, Map(), Map()))
         } else if (index == 0) {
-          list ::=(word, KeyWord(word, 1, Map(), Map(word.substring(word.length - 1, word.length) -> 1)))
+          list ::= (word, KeyWord(word, 1, Map(), Map(word.substring(word.length - 1, word.length) -> 1)))
         } else if (index == wordArray.length - 1) {
-          list ::=(word, KeyWord(word, 1, Map(wordArray(index - 1).substring(0, 1) -> 1), Map()))
+          list ::= (word, KeyWord(word, 1, Map(wordArray(index - 1).substring(0, 1) -> 1), Map()))
         } else {
           val wordRight = wordArray(index + 1)
-          list ::=(word, KeyWord(word, 1, Map(wordArray(index - 1).substring(0, 1) -> 1), Map(wordRight.substring(wordRight.length - 1, wordRight.length) -> 1)))
+          list ::= (word, KeyWord(word, 1, Map(wordArray(index - 1).substring(0, 1) -> 1), Map(wordRight.substring(wordRight.length - 1, wordRight.length) -> 1)))
         }
         index += 1
       }
@@ -158,14 +158,14 @@ object MyFenci {
   }
 
   val p: Pattern = Pattern.compile("<[^>]+>|[`~!@#$%^&*()+=|{}':;',\\\\[\\\\].<>/?~！@#￥%……&*（）——+|{}【】‘；：”“’。，、？]|-|nbsp|\n|\r| |　|」|「|》|《", Pattern.CASE_INSENSITIVE)
+
   def replaceSprical(str: String): String = {
     var dest: String = ""
     if (str != null) {
       val m: Matcher = p.matcher(str)
       dest = m.replaceAll("")
     }
-    return dest
-
+    dest
   }
 
   def allSubStr(text: String, num: Int): String = {
