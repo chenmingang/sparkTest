@@ -113,7 +113,7 @@ public class Proposer {
             SocketChannel socketChannel = start(ipAndPort[0], Integer.valueOf(ipAndPort[1]), new SimpleChannelInboundHandler<RequestInfo>() {
                 @Override
                 protected void channelRead0(ChannelHandlerContext channelHandlerContext, RequestInfo msg) throws Exception {
-                    System.out.println(msg);
+//                    System.out.println(msg);
                     String body = msg.getBody(String.class);
                     if (body.equals("true")) {
                         accepNum.incrementAndGet();

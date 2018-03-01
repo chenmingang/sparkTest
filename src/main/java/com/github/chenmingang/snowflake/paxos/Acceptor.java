@@ -20,7 +20,13 @@ public class Acceptor {
     private volatile long lastProposerVersion = -1L;
 
     public static void main(String[] args) {
-        Acceptor.INSTANCE.start();
+        port = "1111";
+        new Acceptor().start();
+        port = "1112";
+        new Acceptor().start();
+        port = "1113";
+        new Acceptor().start();
+
     }
 
     private RequestInfo handelResult = null;
@@ -100,7 +106,7 @@ public class Acceptor {
         ChannelFuture f = bootstrap.bind(serverPort).sync();
 //        f.channel().closeFuture().sync();
         if (f.isSuccess()) {
-            System.out.println("long connection started success");
+            System.out.println("long connection started success on port:" + port);
             return f.channel();
         } else {
             System.out.println("long connection started fail");
