@@ -11,7 +11,7 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<RequestInfo>
 		System.out.println(msg);
 //		ctx.close();
 //		ctx.disconnect();
-		ctx.channel().eventLoop().shutdownGracefully();
+//		ctx.channel().eventLoop().shutdownGracefully();
 	}
 	@Override
 	public void channelRegistered(ChannelHandlerContext ctx) throws Exception {

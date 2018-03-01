@@ -44,8 +44,9 @@ public class Acceptor {
         System.out.println(requestInfo);
         RequestInfo result = new RequestInfo();
         result.setType(1);
+        long version = Long.valueOf(requestInfo.getBody(String.class));
         if (requestInfo.getType() == 1) {
-            if (requestInfo.getType() > lastProposerVersion) {
+            if (version > lastProposerVersion) {
                 lastProposerVersion = Long.valueOf(requestInfo.getBody(String.class));
                 result.setBody("true");
             } else {
@@ -61,8 +62,7 @@ public class Acceptor {
                 result.setBody("false");
             }
         }
-        ctx.write(result);
-        ctx.flush();
+        ctx.writeAndFlush(result);
     }
 
     private Channel bind(int serverPort) throws Exception {
@@ -79,7 +79,7 @@ public class Acceptor {
         // 有数据立即发送
         bootstrap.option(ChannelOption.TCP_NODELAY, true);
         // 保持连接
-//        bootstrap.childOption(ChannelOption.SO_KEEPALIVE, true);
+        bootstrap.childOption(ChannelOption.SO_KEEPALIVE, true);
         // 处理新连接
         bootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
             @Override

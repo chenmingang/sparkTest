@@ -9,7 +9,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RequestInfo>
 
 	@Override
 	protected void channelRead0(ChannelHandlerContext ctx, RequestInfo msg) throws Exception {
-		System.out.println(msg.getSequence());
+		System.out.println(msg);
 		msg.setBody("server");
 		ctx.writeAndFlush(msg);
 	}
@@ -17,6 +17,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RequestInfo>
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
 		System.out.println("error");
+		System.out.println(cause.toString());
 	}
 
 	@Override
