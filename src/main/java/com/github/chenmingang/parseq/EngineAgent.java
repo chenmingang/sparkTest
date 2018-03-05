@@ -7,7 +7,7 @@ import com.linkedin.parseq.promise.SettablePromise;
 
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class EngineAgent {
 
@@ -21,11 +21,12 @@ public class EngineAgent {
         this.scheduler = scheduler;
     }
 
-    public <T, R> SettablePromise<R> async(T param, Function<T, R> function) {
-        final SettablePromise<R> promise = Promises.settable();
+
+    public <T> SettablePromise<T> async(Supplier<T> supplier) {
+        final SettablePromise<T> promise = Promises.settable();
         getExecutors().execute(() -> {
             try {
-                promise.done(function.apply(param));
+                promise.done(supplier.get());
             } catch (Exception e) {
                 promise.fail(e);
             }
@@ -33,8 +34,8 @@ public class EngineAgent {
         return promise;
     }
 
-    public <T, R> Task<R> task(T param, Function<T, R> function) {
-        return Task.async(() -> async(param, function));
+    public <T> Task<T> task(Supplier<T> supplier) {
+        return Task.async(() -> async(supplier));
     }
 
     public void run(final Task<?> task) {

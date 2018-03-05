@@ -1,6 +1,5 @@
 package com.github.chenmingang.snowflake.paxos;
 
-import com.github.chenmingang.snowflake.IdGenerator;
 import com.github.chenmingang.snowflake.net.MessageDecoder;
 import com.github.chenmingang.snowflake.net.MessageEncoder;
 import com.github.chenmingang.snowflake.net.RequestInfo;
@@ -15,18 +14,23 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
  * 批准者
  */
 public class Acceptor {
-    private static String port = ConfigUtil.getProperty("paxos.server.port");
+    private String port = ConfigUtil.getProperty("paxos.server.port");
 
     private volatile long lastProposerVersion = -1L;
 
     public static void main(String[] args) {
-        port = "1111";
-        new Acceptor().start();
-        port = "1112";
-        new Acceptor().start();
-        port = "1113";
+//        port = "1111";
+//        new Acceptor().start();
+//        port = "1112";
+//        new Acceptor().start();
+//        port = "1113";
         new Acceptor().start();
 
+    }
+    //test
+    public Acceptor(String port){
+        this.port = port;
+        start();
     }
 
     private RequestInfo handelResult = null;
@@ -50,23 +54,43 @@ public class Acceptor {
         System.out.println(requestInfo);
         RequestInfo result = new RequestInfo();
         result.setType(1);
-        long version = Long.valueOf(requestInfo.getBody(String.class));
         if (requestInfo.getType() == 1) {
+            //prepare
+            long version = Long.valueOf(requestInfo.getBody(String.class));
             if (version > lastProposerVersion) {
                 lastProposerVersion = Long.valueOf(requestInfo.getBody(String.class));
                 result.setBody("true");
             } else {
                 result.setBody("false");
             }
+            System.out.println("prepare : " + result.getBody(String.class));
+
         } else if (requestInfo.getType() == 2) {
+            //proposer
             String body = requestInfo.getBody(String.class);
-            String[] split = body.split(":");
-            if (split[0].equals(lastProposerVersion + "") &&
-                    IdGenerator.INSTANCE.getWorkerId() != Long.valueOf(split[1])) {
-                result.setBody("true");
-            } else {
-                result.setBody("false");
+            String[] split = body.split("#");
+            String versionStr = split[0];
+            String client = split[1];
+            String workId = split[2];
+
+            if (versionStr.equals(lastProposerVersion + "")) {
+                if (Meta.INSTANCE.exist(Long.valueOf(workId)) && !Meta.INSTANCE.exist(client, Long.valueOf(workId))) {
+                    result.setBody("false");
+                } else {
+                    result.setBody("true");
+                }
             }
+            System.out.println("proposer : " + result.getBody(String.class));
+
+        } else if (requestInfo.getType() == 3) {
+            //learner
+            String body = requestInfo.getBody(String.class);
+            String[] split = body.split("#");
+            String client = split[0];
+            String workId = split[1];
+            Meta.INSTANCE.putMeta(client, Long.valueOf(workId));
+            result.setBody("true");
+            System.out.println("learner : " + result.getBody(String.class));
         }
         ctx.writeAndFlush(result);
     }
@@ -99,6 +123,12 @@ public class Acceptor {
                         handle(channelHandlerContext, requestInfo);
                     }
 
+                    @Override
+                    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+                        RequestInfo result = new RequestInfo();
+                        result.setBody("false");
+                        ctx.writeAndFlush(result);
+                    }
                 });
             }
         });

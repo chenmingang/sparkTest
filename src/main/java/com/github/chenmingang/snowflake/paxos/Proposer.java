@@ -24,8 +24,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class Proposer {
 
-    private static String port = ConfigUtil.getProperty("paxos.server.port");
-    private static String acceptors = ConfigUtil.getProperty("idGenerate.work.hosts");
+    private String port = ConfigUtil.getProperty("paxos.server.port");
+    private String acceptors = ConfigUtil.getProperty("idGenerate.work.hosts");
+    private String self = null;
+
     private static Set<String> ipPorts = new HashSet<>();
     private AtomicInteger maxAcceptorNum = new AtomicInteger(0);
     private AtomicInteger accepNum = new AtomicInteger(0);
@@ -34,57 +36,97 @@ public class Proposer {
     private Map<String, SocketChannel> aliveSocket = new HashMap<>();
 
     static {
-        String[] ipPortArr = acceptors.split(";");
-        for (String ipPortStr : ipPortArr) {
-            ipPorts.add(ipPortStr);
-        }
+
     }
 
     public static void main(String[] args) {
-        long proposal = INSTANCE.proposal();
+        long proposal = 0;
+        while (proposal <= 0) {
+            try {
+                proposal = INSTANCE.proposal();
+            } catch (Exception e) {
+                System.out.println("proposal失败");
+            }
+        }
         System.out.println(proposal);
     }
 
+    //test
+    public Proposer(String port) {
+        this.port = port;
+        new Proposer();
+    }
+
     private Proposer() {
+        String[] ipPortArr = acceptors.split(";");
+        for (String ipPortStr : ipPortArr) {
+            final String[] ipAndPort = ipPortStr.split(":");
+            if (isSelf(ipAndPort[0], ipAndPort[1])) {
+                self = ipPortStr;
+            }
+            ipPorts.add(ipPortStr);
+        }
+
+        resetNum();
         startAll();
     }
 
     public static Proposer INSTANCE = new Proposer();
 
     public boolean prepare() {
-        long nextId = IdGenerator.INSTANCE.nextId();
+        long nextId = IdGenerator.currentMillis();
         RequestInfo req = new RequestInfo();
         req.setType(1);
-        req.setBody("" + nextId);
+        req.setBody(nextId + "");
         doNet(req);
         if (proposerResult()) {
-            resetNum();
             prepareVersionId = nextId;
             return true;
         } else {
-            return prepare();
+            throw new RuntimeException("false");
         }
     }
 
     public long proposal() {
-        prepare();
+        long workId = 0;
 
-        final long candidateId = IdGenerator.genNextWorkId();
-        RequestInfo req = new RequestInfo();
-        req.setType(2);
-        req.setBody(prepareVersionId + ":" + candidateId);
-        doNet(req);
+        while (workId <= 0) {
+            try {
+                resetNum();
+                prepare();
 
-        if (proposerResult()) {
-            resetNum();
-            return candidateId;
-        } else {
-            return proposal();
+                resetNum();
+
+                workId = IdGenerator.genNextWorkId();
+                RequestInfo req = new RequestInfo();
+                req.setType(2);
+                req.setBody(prepareVersionId + "#" + self + "#" + workId);
+                doNet(req);
+
+                if (proposerResult()) {
+                    resetNum();
+                    learn(workId);
+                    return workId;
+                } else {
+                    throw new RuntimeException("false");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
+        return workId;
+    }
+
+    private void learn(Long workId) {
+        Meta.INSTANCE.putMeta(self, workId);
+        RequestInfo req = new RequestInfo();
+        req.setType(3);
+        req.setBody(self + "#" + workId);
+        doNet(req);
     }
 
     private void resetNum() {
-        maxAcceptorNum = new AtomicInteger(0);
+//        maxAcceptorNum = new AtomicInteger(0);
         accepNum = new AtomicInteger(0);
     }
 
@@ -99,25 +141,31 @@ public class Proposer {
         });
     }
 
-    private boolean proposerResult() {
+    private synchronized boolean proposerResult() {
         return accepNum.get() * 2 >= maxAcceptorNum.get();
     }
 
     private void startAll() {
         for (String ipPort : ipPorts) {
             final String[] ipAndPort = ipPort.split(":");
-            if (isSelf(ipAndPort[0], ipAndPort[1])) {
+            if (ipPort.equals(self)) {
                 continue;
             }
             maxAcceptorNum.incrementAndGet();
             SocketChannel socketChannel = start(ipAndPort[0], Integer.valueOf(ipAndPort[1]), new SimpleChannelInboundHandler<RequestInfo>() {
                 @Override
                 protected void channelRead0(ChannelHandlerContext channelHandlerContext, RequestInfo msg) throws Exception {
-//                    System.out.println(msg);
+                    System.out.println(msg);
                     String body = msg.getBody(String.class);
                     if (body.equals("true")) {
                         accepNum.incrementAndGet();
                     }
+                }
+
+                @Override
+                public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+//                    ctx.fireExceptionCaught(cause);
+                    cause.printStackTrace();
                 }
             });
             if (socketChannel == null) {
@@ -128,28 +176,29 @@ public class Proposer {
     }
 
     private SocketChannel start(String inetHost, int inetPort, SimpleChannelInboundHandler handler) {
-        EventLoopGroup eventLoopGroup = new NioEventLoopGroup();
-        Bootstrap bootstrap = new Bootstrap();
-        bootstrap.channel(NioSocketChannel.class);
-        bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
-        bootstrap.option(ChannelOption.TCP_NODELAY, true);
-        bootstrap.group(eventLoopGroup);
-        bootstrap.remoteAddress(inetHost, inetPort);
-        bootstrap.handler(new ChannelInitializer<SocketChannel>() {
-            @Override
-            protected void initChannel(SocketChannel socketChannel) throws Exception {
-                socketChannel.pipeline().addLast(new MessageDecoder(), new MessageEncoder(), handler);
-            }
-        });
         ChannelFuture future = null;
         try {
+            EventLoopGroup eventLoopGroup = new NioEventLoopGroup();
+            Bootstrap bootstrap = new Bootstrap();
+            bootstrap.channel(NioSocketChannel.class);
+            bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
+            bootstrap.option(ChannelOption.TCP_NODELAY, true);
+            bootstrap.group(eventLoopGroup);
+            bootstrap.remoteAddress(inetHost, inetPort);
+            bootstrap.handler(new ChannelInitializer<SocketChannel>() {
+                @Override
+                protected void initChannel(SocketChannel socketChannel) throws Exception {
+                    socketChannel.pipeline().addLast(new MessageDecoder(), new MessageEncoder(), handler);
+                }
+            });
+
             future = bootstrap.connect(inetHost, inetPort).sync();
+            if (future.isSuccess()) {
+                return (SocketChannel) future.channel();
+            }
         } catch (InterruptedException e) {
             return null;
         } finally {
-        }
-        if (future.isSuccess()) {
-            return (SocketChannel) future.channel();
         }
         return null;
     }
@@ -158,7 +207,7 @@ public class Proposer {
         try {
             InetAddress ia = InetAddress.getByName(ip.split(":")[0]);
             InetAddress localhost = InetAddress.getLocalHost();
-            return ia.toString().split("/")[1].equals(localhost.toString().split("/")[1]) && port.equals(Proposer.port);
+            return ia.toString().split("/")[1].equals(localhost.toString().split("/")[1]) && port.equals(this.port);
         } catch (UnknownHostException e) {
         }
         return false;

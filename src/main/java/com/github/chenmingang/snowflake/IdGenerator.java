@@ -10,7 +10,9 @@ public class IdGenerator {
     }
 
     private void findWorkId() {
-        workerId = Proposer.INSTANCE.proposal();
+        if (workerId <= 0) {
+            workerId = Proposer.INSTANCE.proposal();
+        }
     }
 
     public static long genNextWorkId() {
@@ -19,7 +21,7 @@ public class IdGenerator {
 
     public static void main(String[] args) {
         long l1 = currentMillis();
-        for (int i = 0; i < 100000000; i++) {
+        for (int i = 0; i < 100; i++) {
 //            System.out.println(INSTANCE.nextId());
             INSTANCE.nextId();
         }
@@ -41,7 +43,7 @@ public class IdGenerator {
     private long lastTimestamp = -1L;
 
     public long nextId() {
-//        findWorkId();
+        findWorkId();
 
         long current = currentMillis();
 
@@ -93,6 +95,7 @@ public class IdGenerator {
     public static long currentMillis() {
         return System.currentTimeMillis();
     }
+
     public static long getMaxWorkerId() {
         return INSTANCE.maxWorkerId;
     }

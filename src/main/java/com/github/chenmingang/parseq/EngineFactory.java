@@ -8,16 +8,18 @@ import java.util.concurrent.*;
 
 public class EngineFactory {
 
-    private static EngineFactory INSTANCE = new EngineFactory();
-    private final EngineAgent defaultEngine;
+    //    private static EngineFactory INSTANCE = new EngineFactory();
+    private static EngineAgent defaultEngine;
 
     private EngineFactory() {
-        int numCores = Runtime.getRuntime().availableProcessors();
-        defaultEngine = getEngine(numCores + 1, 1, numCores + 1);
     }
 
-    public static EngineAgent defaultEngine() {
-        return INSTANCE.defaultEngine;
+    public synchronized static EngineAgent defaultEngine() {
+        if (defaultEngine == null) {
+            int numCores = Runtime.getRuntime().availableProcessors();
+            defaultEngine = getEngine(numCores + 1, 1, numCores + 1);
+        }
+        return defaultEngine;
     }
 
     public static EngineAgent getEngine(int poolSize, int scheduleSize, int queueNum) {

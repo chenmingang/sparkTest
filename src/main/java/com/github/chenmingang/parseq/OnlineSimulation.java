@@ -8,8 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class OnlineSimulation {
-//    static EngineAgent engine = EngineFactory.defaultEngine();
-    static EngineAgent engine = EngineFactory.getEngine(20,1,20);
+    //    static EngineAgent engine = EngineFactory.defaultEngine();
+    static EngineAgent engine = EngineFactory.getEngine(20, 1, 20);
 
     public static void main(String[] args) {
         long l1 = System.currentTimeMillis();
@@ -52,13 +52,18 @@ public class OnlineSimulation {
         // 第二步查询
         List<Task<Model>> tasks = new ArrayList<>();
         for (Model model : modelList) {
-            Task<Model> task = engine.task(model, (Model i) -> setName(i));
+            Task<Model> task = engine.task(() -> setName(model));
             tasks.add(task);
         }
         ParTask<Model> parTask = Tasks.par(tasks);
         engine.run(parTask);
         try {
             parTask.await();
+            List<Model> successful = parTask.getSuccessful();
+            Throwable error = parTask.getError();
+            if (error != null) {
+                error.printStackTrace();
+            }
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -67,6 +72,7 @@ public class OnlineSimulation {
 
     /**
      * 执行子查询并合并数据的模拟
+     *
      * @param model
      * @return
      */
@@ -76,6 +82,7 @@ public class OnlineSimulation {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
         }
+//        throw new RuntimeException("");
         return model;
     }
 
