@@ -54,7 +54,18 @@ public class Proposer {
     //test
     public Proposer(String port) {
         this.port = port;
-        new Proposer();
+        String[] ipPortArr = acceptors.split(";");
+        for (String ipPortStr : ipPortArr) {
+            final String[] ipAndPort = ipPortStr.split(":");
+            if (isSelf(ipAndPort[0], ipAndPort[1])) {
+                self = ipPortStr;
+            }
+            ipPorts.add(ipPortStr);
+        }
+
+        resetNum();
+        startAll();
+        this.proposal();
     }
 
     private Proposer() {
@@ -106,12 +117,14 @@ public class Proposer {
                 if (proposerResult()) {
                     resetNum();
                     learn(workId);
+                    System.out.println(workId+":true");
                     return workId;
                 } else {
                     throw new RuntimeException("false");
                 }
             } catch (Exception e) {
                 e.printStackTrace();
+                System.out.println(workId+":false");
             }
         }
         return workId;
@@ -142,7 +155,7 @@ public class Proposer {
     }
 
     private synchronized boolean proposerResult() {
-        return accepNum.get() * 2 >= maxAcceptorNum.get();
+        return accepNum.get() * 2 > maxAcceptorNum.get();
     }
 
     private void startAll() {

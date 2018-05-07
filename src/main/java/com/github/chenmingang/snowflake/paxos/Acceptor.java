@@ -15,30 +15,19 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
  */
 public class Acceptor {
     private String port = ConfigUtil.getProperty("paxos.server.port");
+    Meta meta = Meta.INSTANCE;
 
     private volatile long lastProposerVersion = -1L;
 
-    public static void main(String[] args) {
-//        port = "1111";
-//        new Acceptor().start();
-//        port = "1112";
-//        new Acceptor().start();
-//        port = "1113";
-        new Acceptor().start();
 
-    }
     //test
-    public Acceptor(String port){
+    public Acceptor(String port) {
         this.port = port;
         start();
     }
 
-    private RequestInfo handelResult = null;
-
     private Acceptor() {
     }
-
-    public static Acceptor INSTANCE = new Acceptor();
 
     private void start() {
 //        while (true) {
@@ -53,7 +42,8 @@ public class Acceptor {
     private void handle(ChannelHandlerContext ctx, RequestInfo requestInfo) {
         System.out.println(requestInfo);
         RequestInfo result = new RequestInfo();
-        result.setType(1);
+        result.setType(requestInfo.getType());
+        result.setSequence(Long.valueOf(port));
         if (requestInfo.getType() == 1) {
             //prepare
             long version = Long.valueOf(requestInfo.getBody(String.class));
@@ -74,7 +64,7 @@ public class Acceptor {
             String workId = split[2];
 
             if (versionStr.equals(lastProposerVersion + "")) {
-                if (Meta.INSTANCE.exist(Long.valueOf(workId)) && !Meta.INSTANCE.exist(client, Long.valueOf(workId))) {
+                if (meta.exist(Long.valueOf(workId)) && !meta.exist(client, Long.valueOf(workId))) {
                     result.setBody("false");
                 } else {
                     result.setBody("true");
@@ -88,7 +78,7 @@ public class Acceptor {
             String[] split = body.split("#");
             String client = split[0];
             String workId = split[1];
-            Meta.INSTANCE.putMeta(client, Long.valueOf(workId));
+            meta.putMeta(client, Long.valueOf(workId));
             result.setBody("true");
             System.out.println("learner : " + result.getBody(String.class));
         }
